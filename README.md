@@ -10,7 +10,7 @@ Windows Anaconda 3
 
 	import yamin
 	ymn = yamin.Yaminator('db')
-	ymn.transform(u'무대팀장')
+	print(ymn.transform(u'무대팀장'))
 
 출력
 
