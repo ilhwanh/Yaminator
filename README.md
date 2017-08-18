@@ -15,3 +15,5 @@ Windows Anaconda 3
 출력
 
 	무머덤튽
+
+python yamin.py 로 직접 실행하면 대화형식으로 야민정음을 변환해볼 수 있습니다.
