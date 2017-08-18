@@ -7,8 +7,11 @@ Python 3.5.3
 Windows Anaconda 3
 # 사용 예시
 파이썬 코드
+
 	import yamin
 	ymn = yamin.Yaminator('db')
 	ymn.transform(u'무대팀장')
+
 출력
+
 	무머덤튽
