@@ -5,16 +5,17 @@
 # Date: 17.08.19
 #
 
-consonent_first = ord(u'ㄱ')
-consonent_last = ord(u'ㅎ')
-vowel_first = ord(u'ㅏ')
-vowel_last = ord(u'ㅣ')
-syllable_first = ord(u'가')
-syllable_last = ord(u'힣')
+consonent_first = ord('ㄱ')
+consonent_last = ord('ㅎ')
+vowel_first = ord('ㅏ')
+vowel_last = ord('ㅣ')
+syllable_first = ord('가')
+syllable_last = ord('힣')
 
 list_initial = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ']
 list_medial = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ']
 list_final = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ']
+
 
 #
 # Helper functions to analyze korean syllables
@@ -95,7 +96,7 @@ def is_korean_syllable(syl):
 # Yaminator classes
 #
 
-# Class for naive syllable transform
+# Helper class for naive syllable transform
 class NaiveTransform:
 
 	def __init__(self, initial, medial, final, syl1, syl2):
@@ -166,6 +167,22 @@ class Yaminator:
 
 		f.close()
 
+		f = codecs.open(os.path.join(dbpath, 'dic_naive_rot.txt'), 'r', 'utf-8')
+
+		self.dic_naive_rot = {'i' : {}, 'm' : {}, 'm-1' : {}, 'f' : {}, 's' : {}}
+		for line in f.read().splitlines():
+			row = line.split()
+			if row[0] == 's':
+				self.dic_naive_rot['s'].update({row[1] : row[2], row[2] : row[1]})
+			else:
+				if row[2] == '_':
+					row[2] = ''
+				if row[3] == '_':
+					row[3] = ''
+				(self.dic_naive_rot[row[0]]).setdefault(row[2], {}).update({int(row[1]) : row[3]})
+
+		f.close()
+
 	# Transform string
 	# @Parameter
 	#	String 	subject string
@@ -188,10 +205,95 @@ class Yaminator:
 				result += syl
 		return result
 
+	# Rotate string
+	# @Parameter
+	#	String 	subject string
+	# @Return
+	#	String	resulted string
+	def rotate(self, string):
+		result = ''
+		for syl in string:
+			if is_korean_syllable(syl):
+				ressyl, _ = self.__rotate_syl(syl)
+				result += ressyl
+
+			else:
+				result += syl
+		return result
+
+	# Rotate syllable
+	# @Parameter
+	#	String 	subject syllable
+	# @Return
+	#	String	resulted syllable
+	#	bool 	rotated
+	def __rotate_syl(self, syl):
+		if syl in self.dic_naive_rot['s']:	# Check exceptional case
+			return self.dic_naive_rot['s'][syl], True
+		
+		i, m, f = sep(syl)
+		try:
+			ir = self.dic_naive_rot['i'][i]
+			mr = self.dic_naive_rot['m'][m]
+			fr = self.dic_naive_rot['f'][f]
+
+			for angle in ir:			# Find matching rotation angle
+				if angle in mr and angle in fr:
+					if angle == 180:
+						return build(fr[angle], mr[angle], ir[angle]), True
+					elif angle == 90:
+						return build(ir[angle], mr[angle], '') + fr[angle], True
+					elif angle == 270:
+						return fr[angle] + build(ir[angle], mr[angle], ''), True
+		except KeyError:				# Three of any has no candidate
+			pass
+			# Keep it for now
+		
+		# Try reserved combination
+		try:
+			ir = self.dic_naive_rot['f'][i]
+			mr = self.dic_naive_rot['m-1'][m]
+			fr = self.dic_naive_rot['i'][f]
+			print(ir, mr, fr)
+
+			for angle in ir:			# Find matching rotation angle
+				if angle in mr and angle in fr:
+					# But it is always angle == 270
+					if angle == 270:
+						return build(fr[angle], mr[angle], '') + ir[angle], True
+		except KeyError:				# Three of any has no candidate
+			return syl, False
+
+		return syl, False
+
+	# Transform or rotate string, only either one
+	# @Parameter
+	#	String 	subject string
+	# @Return
+	#	String	resulted string
+	def transrotate(self, string):
+		result = ''
+		for syl in string:
+			if is_korean_syllable(syl):
+				done = False
+				for trans in self.trans:
+					ressyl, check = trans.transform(syl)
+					if check:
+						result += ressyl
+						done = True
+						break
+				if not done:
+					ressyl, _ = self.__rotate_syl(syl)
+					result += ressyl
+			else:
+				result += syl
+		return result
+
 
 if __name__ == "__main__":
 	yamin = Yaminator('db')
 	while True:
 		string = input('>> ')
-		print('<< {}'.format(yamin.transform(string)))
+		print('<< {}'.format(yamin.transrotate(string)))
+
 
